@@ -138,3 +138,50 @@ Ahmad, not the calendar date in the plan).
   traffic would give. Draft paragraph in `data/GOLD-PLAN.md` §5; paste into
   `PAPER.md` before day 7.
 - `[outcome: met]` — the gold set exists and `eval.py` can score against it.
+
+---
+
+## Day 3 — Fri 31 Jul 2026
+
+Compressed schedule continues (Day 3 same session as Days 1–2).
+
+- `bench.py` and `provenance.py` are Block-0 files per M01-RETRIEVAL.md, but
+  Block 0 was skipped — built both fresh today instead of assuming they
+  existed.
+- Refactored `pipeline.py`: `retrieve()` split into named `embed_query` /
+  `search` / `rerank` stages (previously inlined), so `run_cell.py` can time
+  each independently; `generate()` now returns `(text, n_new_tokens)` for
+  `tok_per_s`. Re-ran the Day 1 baseline smoke test after the refactor —
+  identical in-corpus/refusal output, so behavior didn't change.
+- `run_cell.py`: index cache keyed on `(chunk_size, overlap, embed_model)`;
+  warmup = first 3 gold queries run once and discarded; timing = all 30
+  queries × 3 repeats = 90 measurements/cell; OOM caught and recorded as
+  `status:"oom"` rather than crashing. `validate_record` added for schema
+  shape-checking (used by `tests/test_record.py`, not by the sweep itself).
+- 28/28 unit tests pass (`test_eval.py` + new `test_record.py`, the latter
+  covering `bench.py` percentiles and `validate_record` — all against fake
+  data, no model loading, runs in seconds).
+- Smoke test: 4 cells, 2 distinct indices (256/0.0/small and
+  512/0.15/small) × {reranker off, cross-encoder}, `--n-queries 2 --warmup 1
+  --repeats 1` (not the real 30/3/3 — this machine is CPU-only and a
+  reduced protocol is enough to check the harness is wired correctly; days
+  4–5 use the real numbers on rented cards). **Passed**: `run` and `prov`
+  blocks byte-identical across all 4 records; index cache correctly reused
+  (`index_build_s: 0.0`) on the 2 cells sharing an already-built index;
+  rerank stage cost scales with over-fetch size (~0.9s at top_k=3→12
+  candidates, ~2.9s at top_k=5→20) and measures ~0 when `reranker=off`,
+  confirming the per-stage timers are honest, not fiction.
+- **CPU generation is the bottleneck, and it is context-size sensitive, not
+  constant**: `chunk_size=256/top_k=3` cells generated in ~118–156s per
+  call; `chunk_size=512/top_k=5` cells (≈3x more context tokens) took
+  ~410s per call — a 2.6–3.5x slowdown tracking context growth, on a
+  no-GPU dev box (`torch.cuda.is_available() == False`). Total smoke-test
+  wall time ≈ 45 minutes. Confirms the pipeline is correct; these numbers
+  say nothing about real per-cell latency, which only rented A100/L4
+  hardware in days 4–5 can produce. Discussed moving today's dev/smoke work
+  to Colab+A100 for velocity (rough estimate: 50–100x faster generation);
+  decided to keep the actual Measurement 01 sweeps on rented cards per
+  REFERENCE.md (card identity must be load-bearing and deliberately chosen,
+  which a Colab-allocated GPU doesn't guarantee).
+- `[outcome: met]` — one invocation (`run_cell.py <config_id>`) produces a
+  complete record: quality, cost, and provenance, no manual bookkeeping.

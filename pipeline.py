@@ -68,18 +68,37 @@ def _get_reranker() -> CrossEncoder:
     return _reranker
 
 
-def retrieve(query: str, store: Store, cfg: Config) -> list[Hit]:
-    q_vec = embed.embed([query], cfg.embed_model)[0]
+def embed_query(query: str, cfg: Config) -> list[float]:
+    """Stage 1: embed."""
+    return embed.embed([query], cfg.embed_model)[0]
+
+
+def search(query_vec: list[float], store: Store, cfg: Config) -> list[Hit]:
+    """Stage 2: search. Over-fetches when reranking so there's something to reorder."""
     fetch_k = cfg.top_k * 4 if cfg.reranker == "cross-encoder" else cfg.top_k
-    hits = store.search(q_vec, top_k=fetch_k)
-    if cfg.reranker == "cross-encoder" and hits:
-        reranker = _get_reranker()
-        scores = reranker.predict([(query, h.text) for h in hits])
-        hits = [h for _, h in sorted(zip(scores, hits), key=lambda p: p[0], reverse=True)]
+    return store.search(query_vec, top_k=fetch_k)
+
+
+def rerank(query: str, hits: list[Hit], cfg: Config) -> list[Hit]:
+    """Stage 3: rerank. A no-op pass-through when cfg.reranker == "off" — run_cell.py
+    still times this stage, so an "off" cell's rerank cost should measure ~0."""
+    if cfg.reranker != "cross-encoder" or not hits:
+        return hits
+    reranker = _get_reranker()
+    scores = reranker.predict([(query, h.text) for h in hits])
+    return [h for _, h in sorted(zip(scores, hits), key=lambda p: p[0], reverse=True)]
+
+
+def retrieve(query: str, store: Store, cfg: Config) -> list[Hit]:
+    q_vec = embed_query(query, cfg)
+    hits = search(q_vec, store, cfg)
+    hits = rerank(query, hits, cfg)
     return hits[: cfg.top_k]
 
 
-def generate(query: str, hits: list[Hit]) -> str:
+def generate(query: str, hits: list[Hit]) -> tuple[str, int]:
+    """Stage 4: generate. Returns (answer_text, n_new_tokens) — the token
+    count is what run_cell.py needs for tok_per_s."""
     model, tokenizer = _get_generator()
     context = "\n\n".join(f"[{h.doc_id}] {h.text}" for h in hits)
     prompt = PROMPT_TEMPLATE.format(context=context, question=query)
@@ -91,12 +110,12 @@ def generate(query: str, hits: list[Hit]) -> str:
     torch.manual_seed(SEED)
     output = model.generate(**inputs, max_new_tokens=MAX_NEW_TOKENS, do_sample=False, num_beams=1)
     new_tokens = output[0][inputs["input_ids"].shape[1] :]
-    return tokenizer.decode(new_tokens, skip_special_tokens=True).strip()
+    return tokenizer.decode(new_tokens, skip_special_tokens=True).strip(), len(new_tokens)
 
 
 def answer(query: str, store: Store, cfg: Config) -> dict:
     hits = retrieve(query, store, cfg)
-    text = generate(query, hits)
+    text, _ = generate(query, hits)
     return {
         "answer": text,
         "retrieved_chunks": [

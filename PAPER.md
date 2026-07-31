@@ -203,11 +203,60 @@ extracted text before freezing. `gold_sha = 3afa042d8d9cd6784e8e1b049e4f4f6c1d45
 
 ### 3.4 Harness and measurement methodology
 
-`[pending: day 3]`
+One config in, one JSON-line record out (`run_cell.py`), matching a fixed
+schema exactly so a card's results are never hand-assembled from a
+spreadsheet. Four stages are timed individually — embed, search, rerank,
+generate — each bracketed by `torch.cuda.synchronize()` immediately before
+the stop timestamp; GPU kernels launch asynchronously, so an unsynchronised
+stop timestamp measures how fast the CPU could issue instructions, not how
+long the GPU took. `rerank` is timed even on `reranker=off` cells, where it
+is a no-op pass-through — its cost should measure ~0, which is itself a
+check that the instrumentation is honest.
+
+**Warmup and repeats.** The first 3 gold queries run once each through the
+full stage pipeline before any timing starts, discarded — this absorbs
+lazy model loading and any one-time kernel/JIT warmup, none of which is the
+number a config's latency should be judged on. Every one of the 30 gold
+queries is then run 3 times end to end; p50 and p95 are computed over all 90
+per-query-repeat measurements for a cell, not over 30 per-query means — a
+mean-of-means would hide exactly the tail behavior p95 exists to catch.
+
+**p50/p95, never the mean.** Rented hosts have noisy neighbours and
+asymmetric latency tails; a mean is pulled around by outliers in a way that
+misrepresents what most queries actually experience (REFERENCE.md ground
+rule 4).
+
+**VRAM.** `torch.cuda.reset_peak_memory_stats()` at the start of a cell,
+`torch.cuda.max_memory_allocated()` at the end — the high-water mark across
+the whole cell, not a single snapshot.
+
+**OOM handling.** A cell that raises a CUDA out-of-memory error is caught,
+VRAM is cleared, and the record is written with `run.status="oom"` and no
+`quality`/`cost` block, rather than crashing the sweep or being silently
+skipped — a refusal is a finding (M01-RETRIEVAL.md §3), and `validate_record`
+in `run_cell.py` treats a well-formed OOM record as valid on its own terms.
+
+**Index cache.** Keyed on `(chunk_size, overlap, embed_model)` — the three
+knobs that actually change the index — so the sweep orders by index and
+rebuilds 12 times, not 96 (§4.2).
+
+**Provenance.** Every record's `prov` block (`provenance.py`) is stamped
+fresh at run time: GPU name and driver (via `nvidia-smi`, `"none (CPU)"` off
+GPU), CUDA/torch/sentence-transformers/faiss versions, git SHA, and the
+frozen `corpus_sha`/`gold_sha` — never typed from memory, never reused from
+a previous run.
 
 ### 3.5 Hardware and software
 
-`[pending: day 3, versions filled days 4–5]`
+| Tier | Card | Arch | SM | VRAM | Mem bandwidth |
+|---|---|---|---|---|---|
+| Strong | A100 80GB | Ampere | SM80 | 80 GB | ~2,039 GB/s |
+| Weak | L4 24GB | Ada | SM89 | 24 GB | ~300 GB/s |
+
+Bandwidth ratio ≈ 6.8× (REFERENCE.md §3) — deliberately a wide spread, so a
+configuration crossing is visible rather than lost in noise. Driver, CUDA,
+and library versions are `[pending: days 4–5 — filled from each run's actual
+`prov` stamp once rented, never typed from memory]`.
 
 ### 3.6 Metric definitions
 
@@ -235,7 +284,18 @@ boundary at exactly the 0.5 threshold.
 
 ### 3.7 Reproduction
 
-`[pending: day 3]`
+Any single cell regenerates with one command:
+
+```
+uv run python run_cell.py <config_id>
+```
+
+`config_id` is the SHA1-derived ID frozen in `configs/grid.yaml` (§3.2); the
+command builds or reuses the cached index for that cell's `(chunk_size,
+overlap, embed_model)`, runs the full 30-query/3-repeat protocol, and prints
+one JSON record matching §3's schema, provenance included. A full card's
+sweep is the same command over all 96 `config_id`s in `configs/grid.yaml`,
+skipping any already present in that card's result file (day 4).
 
 ### 3.8 Handling of unrunnable cells
 
