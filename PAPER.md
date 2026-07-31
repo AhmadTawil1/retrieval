@@ -158,7 +158,48 @@ starts rather than mid-sweep.
 
 ### 3.3 Gold set construction
 
-`[pending: day 2]`
+30 questions, hand-labelled by a single annotator (Ahmad Tawil) reading the
+corpus directly — not generated. Gold labels are **character spans in the
+source document**, `{doc_id, char_start, char_end}`, never chunk IDs: chunk
+IDs only exist relative to one chunk size, and three of the five grid knobs
+change the chunking, so a label made at 512 tokens would be meaningless at
+256 or 1024 (§4.1). Spans are measured against the same `pypdf`-extracted
+text the pipeline actually indexes, not the PDF's visual layout — the two
+can differ (missing spaces, mangled special characters) — using
+`label_helper.py`, which searches a document's extracted text for a phrase
+and returns its exact `char_start`/`char_end` plus surrounding context, so
+offsets are never hand-counted. A retrieved chunk counts as relevant to a
+gold span if it overlaps that span by ≥ 50% of the span's length (§3.6);
+that threshold is a defensible choice only because it is stated plainly
+here, not tuned after seeing results.
+
+Questions were allocated by type before any question was written
+(`data/GOLD-PLAN.md`): 7 single-sentence-answer, 9 paragraph-answer, 8
+lexically-confusable-across-documents (phrased to avoid the source
+document's own terminology, so a near-lexical match against the wrong
+document is a live risk), and 6 requiring two documents — 30 questions, 38
+gold spans (multi-document questions carry 2–3 spans each), spanning all 15
+corpus documents. Span length: 38–414 characters, median 193.
+
+Two annotation passes. The first review pass found two mislabelled
+confusable-document pairs (corrected) and, more consequentially, five
+questions with high content-word overlap against their own gold span (47–62%
+— one question reused six of the span's terms in the span's order). **A
+question phrased in its answer span's own vocabulary is retrievable by
+near-lexical match regardless of configuration** — recall saturates across
+the entire grid, both cards produce identical frontiers, and that reads as a
+transfer result (Hypothesis 1 refuted) when it is really a saturated
+instrument that never gave any configuration a chance to fail. All five were
+rewritten in the second pass to describe the answer without its source
+terminology, without changing which span they target.
+
+Span offsets were located against the same `pypdf`-extracted text the
+pipeline indexes, not against a cleaned reading of the PDF — 13 of the
+initially-quoted spans didn't resolve on the first pass because of
+extraction artifacts (code listings with line numbers interleaved into the
+text, identifiers extracted letter-spaced, punctuation that swallows
+adjacent spaces). Every span was re-resolved and verified against the actual
+extracted text before freezing. `gold_sha = 3afa042d8d9cd6784e8e1b049e4f4f6c1d45709c`.
 
 ### 3.4 Harness and measurement methodology
 
@@ -170,7 +211,27 @@ starts rather than mid-sweep.
 
 ### 3.6 Metric definitions
 
-`[pending: day 2]`
+All four metrics are computed from spans, via one relevance rule
+(`relevance.py`): retrieved chunk `c` is relevant to gold span `g` iff
+`overlap(c, g) / len(g) ≥ 0.5`, and irrelevant by definition if `c` and `g`
+are in different documents.
+
+- **recall@k** — over a query with gold spans `G`, 1 if any of the top-k
+  retrieved chunks is relevant to any span in `G`, else 0; averaged over all
+  30 queries. Reported at k=5 (headline) and k=10 (distinguishes bad ranking
+  from bad retrieval — a config can fail at 5 and recover at 10).
+- **MRR** — reciprocal rank of the first retrieved chunk relevant to any
+  span in `G` (0 if none); averaged over all 30 queries. Sensitive to
+  ordering, which is exactly what a reranker changes and recall@k is blind
+  to.
+- **Context precision** — fraction of the top-5 retrieved chunks relevant to
+  any span in `G`; averaged over all 30 queries. Falls as top-k rises; this
+  is the cost of a large k that recall alone hides.
+
+Implementation: `eval.py`, pure functions with no pipeline dependency,
+unit-tested against hand-built boundary cases (`tests/test_eval.py`) —
+including the recall@k off-by-one at exactly rank k, and the is_relevant
+boundary at exactly the 0.5 threshold.
 
 ### 3.7 Reproduction
 
@@ -190,7 +251,27 @@ starts rather than mid-sweep.
 
 ## 5. Threats to validity
 
-`[pending: days 2, 5, 7]`
+**Single annotator, no inter-annotator agreement figure.** All 30 gold
+questions and spans were labelled by one person (Ahmad Tawil), with no
+second annotator to measure agreement against. Ambiguous cases were
+resolved by that same person's judgment call, not adjudicated.
+
+**Question distribution chosen by the same person who built the corpus.**
+The 15-document corpus and the 30 gold questions were selected by the same
+individual, who therefore already knew what the corpus could answer before
+writing questions against it — a risk of unconsciously favoring questions
+the retrieval system is likely to handle well.
+
+**Lexical-overlap saturation was a live risk in the gold set, mitigated but
+not eliminated.** A question phrased in its own answer span's vocabulary is
+retrievable by near-lexical match at any configuration, which would collapse
+both cards' frontiers to the same shape for a reason unrelated to hardware
+(§3.3). Five such questions were caught and rewritten during review; the
+review process itself (one annotator, checking word overlap against a
+threshold chosen after noticing the problem) has no independent check behind
+it, so residual saturation in some of the 30 cannot be fully ruled out.
+
+`[pending: days 5, 7 — remaining entries: two cards is not a continuum, single seed, and whatever day 6 exposes]`
 
 ---
 

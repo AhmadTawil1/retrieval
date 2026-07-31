@@ -61,3 +61,80 @@ Ran M01-RETRIEVAL.md Day 1 directly (not Block 0 first — decided by Ahmad).
   a few minutes total for ~256 tokens. Confirms the pipeline is correct; real
   per-cell latency numbers are meaningless until measured on the rented
   A100/L4 in days 4–5.
+
+---
+
+## Day 2 — Fri 31 Jul 2026
+
+Ran M01-RETRIEVAL.md Day 2 same-day as Day 1 (compressed schedule — decided by
+Ahmad, not the calendar date in the plan).
+
+- Decided explicitly with Ahmad: the 30 gold questions/spans are hand-labelled
+  by him alone, matching what "single annotator" in Threats actually claims —
+  not AI-drafted-then-reviewed, which would be a different (weaker) process
+  worth a different Threats entry.
+- Built the tooling side: `relevance.py` (`is_relevant`, one overlap-fraction
+  function, one threshold), `eval.py` (recall@k, MRR, context precision, plus
+  gold-set load/validate/hash), `tests/test_eval.py` (17 cases, including the
+  recall@k off-by-one at exactly rank k and the is_relevant boundary at
+  exactly 0.5 — all pass).
+- Built `label_helper.py` so spans don't have to be hand-counted: `find
+  <doc_id> "<phrase>"` returns exact char_start/char_end against the same
+  `pypdf`-extracted text the pipeline indexes (not the PDF's visual layout —
+  confirmed these differ: e.g. RAG.pdf's extracted text has
+  "indexsmallchunks" with no spaces, and some special characters extract as
+  `�`. Worth knowing when reading extracted text to write questions/spans).
+- `data/gold.example.jsonl` added as a schema template (placeholder values
+  only, not real content) — `data/gold.jsonl` itself is Ahmad's to write.
+- §3.6 Metric definitions and the structural half of §3.3 Gold set
+  construction and §5 Threats (single annotator; question distribution
+  chosen by the corpus-builder) written now, since they don't depend on
+  which 30 questions get picked. The annotator-specific facts (hours spent,
+  question distribution, ambiguous cases) are marked `[pending]` in
+  `PAPER.md` until the labelling is actually done.
+- **The number is not yet met**: `eval.py` scoring real configs and the gold
+  set existing both wait on the 30 labels. `[outcome: pending]`
+
+### Gold set — completed same day
+
+- `data/GOLD-PLAN.md` written first: allocation only (which doc, which type,
+  how many), no questions. Types A=7 (single-sentence answer), B=9 (paragraph),
+  C=8 (lexically confusable across docs), D=6 (needs two docs).
+- All 30 questions and span selections written by Ahmad. Two rounds: v1, review
+  pass, v2.
+- Review of v1 found: (a) two type-C labels wrong — q14 marked confusable with
+  Hugging_Face when its own span names RAG, and q23 (docker-compose) marked
+  confusable with uv, which has no multi-container content; (b) five questions
+  with high content-word overlap against their own span (q03 62%, q27 53%,
+  q12 and q11 50%, q30 47%). q03 used six of the span's terms in the span's
+  order.
+- **Why (b) matters, and it belongs in Threats**: a question phrased in its
+  span's vocabulary is retrieved by near-lexical match at any configuration, so
+  recall saturates across the grid and configs stop separating. A saturated
+  gold set yields two identical frontiers — which reads as a refutation of
+  Hypothesis 1 but is really a dead instrument. Fixed in v2 by describing the
+  situation without naming the concept.
+- I had also flagged q13 and q02 as vocabulary problems before measuring;
+  overlap was 14% and 12%. Both fine, left alone. Recording the wrong call
+  because the corrected list is what drove v2.
+- v2 fixes verified. q23 replaced with a real Docker/uv collision
+  (`RUN pip install -r requirements.txt` vs `uv pip install` / `uv sync`).
+- **Span repair was mechanical, done by Claude; spans were chosen by Ahmad.**
+  The quoted span text was cleaned-up reading rather than `pypdf` output, so 13
+  of 36 did not resolve. Causes: code listings extract with line numbers
+  interleaved (`3class Net ( nn . Module ) :`), identifiers extract
+  letter-spaced (`t a r g e t _ m o d u l e s`), LaTeX emphasis eats spaces
+  (`Stage 1 (retrieve):pull`, `newbehavior`). Resolver: whitespace-insensitive,
+  then digit-tolerant, then `difflib` anchor with coverage reported. Every span
+  verified against extracted text after resolution.
+- Two spans were non-contiguous (q29[1], q30[1] — prose plus a code line from
+  elsewhere in the document). Split into separate contiguous spans. 36 → 38.
+- Final: 30 records, 38 spans, `validate_gold` 0 problems, all 15 docs covered,
+  span length min 38 / median 193 / max 414 chars.
+- `gold_sha` = `3afa042d8d9cd6784e8e1b049e4f4f6c1d45709c` — frozen. Any edit
+  from here invalidates both cards.
+- **Open item for §5**: the gold set is constructed, not sampled — 8/30 written
+  to be confusable, 6/30 needing two documents, both higher than natural query
+  traffic would give. Draft paragraph in `data/GOLD-PLAN.md` §5; paste into
+  `PAPER.md` before day 7.
+- `[outcome: met]` — the gold set exists and `eval.py` can score against it.
