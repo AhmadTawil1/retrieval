@@ -185,3 +185,30 @@ Compressed schedule continues (Day 3 same session as Days 1–2).
   which a Colab-allocated GPU doesn't guarantee).
 - `[outcome: met]` — one invocation (`run_cell.py <config_id>`) produces a
   complete record: quality, cost, and provenance, no manual bookkeeping.
+
+---
+
+## Day 4 — the full grid on A100
+
+- Card: **Colab Pro, A100 runtime, confirmed `NVIDIA A100-SXM4-40GB`** via
+  `torch.cuda.get_device_name(0)` before any real work started. Colab Pro
+  lets the runtime type be selected explicitly (A100/L4/T4/CPU/TPU all
+  listed), which resolves the card-identity concern raised before starting
+  — this is a deliberate choice, not an unpredictable allocation.
+- **Correction, not a deviation**: the plan assumed A100 **80GB** (~2,039
+  GB/s); the card actually available is the **40GB SXM4** SKU (~1,555
+  GB/s). Corrected `PAPER.md` §3.5 to the real card rather than leaving the
+  planning assumption in place. Bandwidth ratio vs the L4 is therefore
+  ≈5.2×, not ≈6.8× — still a wide enough spread for the study's purpose.
+  40GB VRAM is not expected to constrain this workload (unlike the L4's
+  24GB, where OOMs are an expected, meaningful result).
+- Output written to a Google-Drive-mounted path
+  (`/content/drive/MyDrive/retrieval_results/a100.jsonl`), not Colab's local
+  disk — local disk is ephemeral and a disconnect would otherwise lose
+  everything resumability is supposed to protect.
+- Ran `sweep.py --output <drive path>` with the real protocol (30
+  queries × 3 repeats, no `--limit`/reduced flags — first time this
+  machine has run the full parameters). First-run cost: model downloads
+  (embedding model, reranker, Qwen2.5-3B-Instruct ~6GB) all completed in
+  under 30s on Colab's network — much faster than expected, not a concern.
+  `[outcome: pending — sweep in progress]`

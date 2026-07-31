@@ -250,13 +250,20 @@ a previous run.
 
 | Tier | Card | Arch | SM | VRAM | Mem bandwidth |
 |---|---|---|---|---|---|
-| Strong | A100 80GB | Ampere | SM80 | 80 GB | ~2,039 GB/s |
+| Strong | **A100-SXM4-40GB** | Ampere | SM80 | 40 GB | ~1,555 GB/s |
 | Weak | L4 24GB | Ada | SM89 | 24 GB | ~300 GB/s |
 
-Bandwidth ratio ≈ 6.8× (REFERENCE.md §3) — deliberately a wide spread, so a
-configuration crossing is visible rather than lost in noise. Driver, CUDA,
-and library versions are `[pending: days 4–5 — filled from each run's actual
-`prov` stamp once rented, never typed from memory]`.
+**Correction to REFERENCE.md's planning assumption.** The plan assumed an
+A100 80GB card (~2,039 GB/s); the A100 actually provisioned (Colab Pro,
+confirmed via `torch.cuda.get_device_name(0)` and cross-checked against
+`nvidia-smi` in `provenance.py`'s stamp) is the 40GB SXM4 SKU, ~1,555 GB/s.
+Bandwidth ratio against the L4 is therefore ≈5.2×, not the ≈6.8× originally
+planned — still a wide spread, wide enough for a configuration crossing to
+be visible, but the number reported here is the one actually measured, not
+the one assumed at planning time. VRAM capacity (40GB) is not a constraint
+for this study's workload regardless of the correction. Driver, CUDA, and
+library versions are `[pending: fill from the completed sweep's actual
+`prov` stamp, never typed from memory]`.
 
 ### 3.6 Metric definitions
 

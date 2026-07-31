@@ -25,6 +25,7 @@ GENERATOR_MODEL_ID = "Qwen/Qwen2.5-3B-Instruct"
 RERANKER_MODEL_ID = "cross-encoder/ms-marco-MiniLM-L6-v2"
 MAX_NEW_TOKENS = 128
 SEED = 1337
+DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
 PROMPT_TEMPLATE = (
     "Answer the question using ONLY the context below. If the context does not "
@@ -57,7 +58,7 @@ def _get_generator():
     global _generator_model, _generator_tokenizer
     if _generator_model is None:
         _generator_tokenizer = AutoTokenizer.from_pretrained(GENERATOR_MODEL_ID)
-        _generator_model = AutoModelForCausalLM.from_pretrained(GENERATOR_MODEL_ID, torch_dtype="auto")
+        _generator_model = AutoModelForCausalLM.from_pretrained(GENERATOR_MODEL_ID, torch_dtype="auto").to(DEVICE)
     return _generator_model, _generator_tokenizer
 
 
@@ -105,7 +106,7 @@ def generate(query: str, hits: list[Hit]) -> tuple[str, int]:
     messages = [{"role": "user", "content": prompt}]
     inputs = tokenizer.apply_chat_template(
         messages, add_generation_prompt=True, return_tensors="pt", return_dict=True
-    )
+    ).to(DEVICE)
 
     torch.manual_seed(SEED)
     output = model.generate(**inputs, max_new_tokens=MAX_NEW_TOKENS, do_sample=False, num_beams=1)

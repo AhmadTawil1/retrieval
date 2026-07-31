@@ -45,11 +45,13 @@ Three independent settings, one question:
 
 | Tier | Card | Arch | SM | VRAM | Mem bandwidth | Used in |
 |---|---|---|---|---|---|---|
-| Strong | A100 80GB | Ampere | SM80 | 80 GB | ~2,039 GB/s | 01, 02, 03 |
+| Strong | A100-SXM4-40GB | Ampere | SM80 | 40 GB | ~1,555 GB/s | 01, 02, 03 |
 | Weak | L4 24GB | Ada | SM89 | 24 GB | ~300 GB/s | 01, 02, 03 |
 | Optional | T4 16GB | Turing | SM75 | 16 GB | ~320 GB/s | 01 only |
 
-**The bandwidth ratio is ~6.8×.** That spread is what makes configuration crossings visible. Two cards from adjacent generations would produce a null result for uninteresting reasons.
+**The bandwidth ratio is ~5.2×.** That spread is what makes configuration crossings visible. Two cards from adjacent generations would produce a null result for uninteresting reasons.
+
+**Amendment, 31 Jul 2026 (Day 4).** The strong tier is provisioned via Colab Pro rather than a rented cloud instance — Colab Pro lets the runtime type be selected explicitly (A100/L4/T4 all available on demand), which satisfies the card-identity requirement below just as well as a rental would. The A100 Colab Pro actually provisions is the **40GB SXM4 SKU** (~1,555 GB/s), not the 80GB SKU (~2,039 GB/s) originally assumed when this table was planned — confirmed via `torch.cuda.get_device_name(0)` and `nvidia-smi`, not assumed. The bandwidth ratio against the L4 is therefore ~5.2×, not ~6.8×; still wide enough for the study's purpose, and the number now on record is the one measured, not planned.
 
 ### Critical correction to the original plan
 
