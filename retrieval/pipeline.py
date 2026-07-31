@@ -18,9 +18,8 @@ import torch
 from sentence_transformers import CrossEncoder
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
-import embed
-import pins
-from store import Hit, Store
+from . import embed, pins
+from .store import Hit, Store
 
 GENERATOR_MODEL_ID = "Qwen/Qwen2.5-3B-Instruct"
 RERANKER_MODEL_ID = "cross-encoder/ms-marco-MiniLM-L6-v2"
@@ -131,7 +130,7 @@ def answer(query: str, store: Store, cfg: Config) -> dict:
 
 
 if __name__ == "__main__":
-    import chunker
+    from . import chunker
 
     cfg = Config(chunk_size=512, overlap=0.15, embed_model="small", top_k=5, reranker="off")
     chunks = chunker.chunk_corpus(Path("corpus"), size=cfg.chunk_size, overlap=cfg.overlap)

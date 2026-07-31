@@ -129,8 +129,8 @@ frontiers are made of.
 **Then find the span:**
 
 ```
-uv run python label_helper.py dump RAG            # read with offset markers
-uv run python label_helper.py find RAG "phrase"   # exact char_start / char_end
+uv run python scripts/label_helper.py dump RAG            # read with offset markers
+uv run python scripts/label_helper.py find RAG "phrase"   # exact char_start / char_end
 ```
 
 **Remember the extraction quirks** already logged: the indexed text is `pypdf`

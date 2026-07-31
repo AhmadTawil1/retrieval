@@ -1,13 +1,8 @@
 """Hand-built cases with known answers. An off-by-one in recall@5 should
 surface here on day 2, not in a 96-cell sweep on day 6."""
 
-import sys
-from pathlib import Path
-
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-
-from eval import context_precision, mrr, recall_at_k, score
-from relevance import Span, is_relevant, overlap_fraction
+from retrieval.eval import context_precision, mrr, recall_at_k, score
+from retrieval.relevance import Span, is_relevant, overlap_fraction
 
 GOLD = Span("doc1", 100, 200)  # length 100
 

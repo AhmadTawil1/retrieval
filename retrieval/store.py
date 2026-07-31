@@ -10,7 +10,7 @@ from pathlib import Path
 import faiss
 import numpy as np
 
-from chunker import Chunk
+from .chunker import Chunk
 
 
 @dataclass(frozen=True)

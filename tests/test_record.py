@@ -5,9 +5,9 @@ surface here in seconds, not after a 90-minute sweep."""
 import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
 
-from bench import p50, p95, percentile
+from retrieval.bench import p50, p95, percentile
 from run_cell import validate_record
 
 # --- bench.py: percentile / p50 / p95 ---------------------------------------

@@ -323,7 +323,7 @@ boundary at exactly the 0.5 threshold.
 Any single cell regenerates with one command:
 
 ```
-uv run python run_cell.py <config_id>
+uv run python scripts/run_cell.py <config_id>
 ```
 
 `config_id` is the SHA1-derived ID frozen in `configs/grid.yaml` (§3.2); the

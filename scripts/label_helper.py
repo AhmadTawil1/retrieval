@@ -4,9 +4,9 @@ the same extracted text the pipeline actually indexes (pypdf output, not the
 PDF's visual layout), which is exactly what this reads.
 
 Usage:
-  uv run python label_helper.py dump RAG                  # read a doc with offset markers
-  uv run python label_helper.py find RAG "cross-encoder"   # locate a phrase's exact span
-  uv run python label_helper.py list                       # available doc_ids
+  uv run python scripts/label_helper.py dump RAG                  # read a doc with offset markers
+  uv run python scripts/label_helper.py find RAG "cross-encoder"   # locate a phrase's exact span
+  uv run python scripts/label_helper.py list                       # available doc_ids
 """
 
 from __future__ import annotations
@@ -14,7 +14,7 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-import chunker
+from retrieval import chunker
 
 CORPUS_DIR = Path("corpus")
 MARKER_EVERY = 500  # characters, for `dump`'s ruler

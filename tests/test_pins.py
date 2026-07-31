@@ -5,14 +5,9 @@ monkeypatched wherever a pin might need resolving, and `PINS_PATH` is
 redirected to a tmp_path file so the real configs/model_pins.yaml is never
 touched."""
 
-import sys
-from pathlib import Path
-
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-
 import pytest
 
-import pins
+from retrieval import pins
 
 
 @pytest.fixture(autouse=True)
@@ -62,9 +57,7 @@ def test_revision_for_unpinned_id_resolves_once_then_reads_from_file(monkeypatch
 
 
 def test_stamp_model_revisions_covers_all_four_model_ids(monkeypatch):
-    import embed
-    import pipeline
-    import provenance
+    from retrieval import embed, pipeline, provenance
 
     monkeypatch.setattr(pins, "_resolve", lambda model_id: f"sha-for-{model_id}")
     monkeypatch.setattr(provenance, "_git_sha", lambda: "test-sha")

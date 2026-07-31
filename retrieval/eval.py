@@ -13,7 +13,7 @@ import hashlib
 import json
 from pathlib import Path
 
-from relevance import DEFAULT_THRESHOLD, Span, is_relevant
+from .relevance import DEFAULT_THRESHOLD, Span, is_relevant
 
 
 def recall_at_k(retrieved: list[Span], gold_spans: list[Span], k: int, thresh: float = DEFAULT_THRESHOLD) -> float:

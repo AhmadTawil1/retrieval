@@ -5,8 +5,8 @@ unexpected means a cell partially failed and needs attention before the
 machine is released.
 
 Usage:
-  uv run python verify_grid.py results/a100.jsonl
-  uv run python verify_grid.py results/a100.jsonl --sanity   # print the day-4 sanity summary
+  uv run python scripts/verify_grid.py results/a100.jsonl
+  uv run python scripts/verify_grid.py results/a100.jsonl --sanity   # print the day-4 sanity summary
 """
 
 from __future__ import annotations

@@ -14,7 +14,7 @@ from __future__ import annotations
 
 from sentence_transformers import SentenceTransformer
 
-import pins
+from . import pins
 
 PINS_PATH = pins.PINS_PATH
 

@@ -2,7 +2,7 @@
 a single invocation, matching the schema in M01-RETRIEVAL.md §3 exactly.
 
 Usage:
-  uv run python run_cell.py <config_id> [--n-queries 30] [--warmup 3] [--repeats 3]
+  uv run python scripts/run_cell.py <config_id> [--n-queries 30] [--warmup 3] [--repeats 3]
 
 `--n-queries/--warmup/--repeats` default to the real protocol (30/3/3, 90
 timed measurements per cell). Override with smaller values for a fast local
@@ -21,15 +21,12 @@ from pathlib import Path
 import torch
 import yaml
 
-import bench
-import chunker
-import embed as embed_module
-import eval as eval_module
-import pipeline
-import provenance
-from pipeline import Config
-from relevance import Span
-from store import Store
+from retrieval import bench, chunker, pipeline, provenance
+from retrieval import embed as embed_module
+from retrieval import eval as eval_module
+from retrieval.pipeline import Config
+from retrieval.relevance import Span
+from retrieval.store import Store
 
 INDEX_CACHE_DIR = Path(".cache/index")
 STAGES = ("embed", "search", "rerank", "generate")

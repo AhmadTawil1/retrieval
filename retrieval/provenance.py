@@ -10,11 +10,8 @@ import faiss
 import sentence_transformers
 import torch
 
-import chunker
-import embed
-import eval as eval_module
-import pins
-import pipeline
+from . import chunker, embed, pins, pipeline
+from . import eval as eval_module
 
 
 def _git_sha() -> str:

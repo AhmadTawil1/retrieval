@@ -11,12 +11,12 @@ each built once, not up to 96 times (§4.2) — this also happens to match
 rather than relied on by accident.
 
 Usage:
-  uv run python sweep.py --output results/a100.jsonl
-  uv run python sweep.py --output results/l4.jsonl
+  uv run python scripts/sweep.py --output results/a100.jsonl
+  uv run python scripts/sweep.py --output results/l4.jsonl
 
 For a fast local dry run (this dev box has no GPU — real timings only come
 from the rented card):
-  uv run python sweep.py --output /tmp/dry.jsonl --n-queries 2 --warmup 1 --repeats 1 --limit 4
+  uv run python scripts/sweep.py --output /tmp/dry.jsonl --n-queries 2 --warmup 1 --repeats 1 --limit 4
 """
 
 from __future__ import annotations
@@ -29,9 +29,9 @@ from pathlib import Path
 
 import yaml
 
-from pipeline import Config
+from retrieval.pipeline import Config
+from retrieval import eval as eval_module
 from run_cell import run_cell
-import eval as eval_module
 
 
 def load_grid(grid_path: Path) -> list[dict]:
