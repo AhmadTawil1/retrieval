@@ -96,8 +96,8 @@ two models registered:
 
 | Name | Model | Dim | Revision |
 |---|---|---|---|
-| `small` | `BAAI/bge-small-en-v1.5` | 384 | `5c38ec7c405ec4b44b94cc5a9bb96e735b38267a` |
-| `base` | `BAAI/bge-base-en-v1.5` | 768 | `[pending: resolves on first use of the base model, see configs/model_pins.yaml]` |
+| `small` | `BAAI/bge-small-en-v1.5` | 384 | `5c38ec7c405ec4b44b94cc5a9bb96e735b38267a` (measured) |
+| `base` | `BAAI/bge-base-en-v1.5` | 768 | `a5beb1e3e68b9ab74eb54cfd186867f64f240e1a` (inferred†) |
 
 Same model family for both, so the small/base contrast is dimension, not
 architecture. Revisions are not hand-typed: the exact commit SHA each model
@@ -106,6 +106,21 @@ resolves to is captured the first time it is loaded and frozen into
 explicitly, so a change upstream on the Hub cannot silently change what "the
 embedding model" means mid-sweep.
 
+**† Measured vs. inferred (LOG.md, Day 4).** `small`'s revision is a
+measurement: `configs/model_pins.yaml` is git-tracked, and the commit it was
+frozen at (`04caf49`) is the `git_sha` recorded on all 96 A100 records — so
+the sweep provably loaded that exact revision. `base`'s revision, and the
+reranker's and generator's below, are not: the pin file is written at
+runtime on whichever machine loads a model first, and that machine was a
+Colab VM deleted before its copy of the file could be read back. These three
+were recovered by resolving `main` on 1 Aug 2026 and are believed equal to
+what the sweep actually loaded because each source repo's last update
+predates the 31 Jul 2026 sweep by 11 months to 2.4 years — assuming no
+force-push or reverted commit on the Hub in between (§5). From the L4 sweep
+onward this gap is closed: `provenance.stamp()` writes every model's
+resolved revision into `prov.model_revisions` on every record, so a pin can
+no longer be lost with the machine that wrote it.
+
 **Vector store (`store.py`).** FAISS `IndexFlatIP` over L2-normalised
 embeddings (inner product = cosine similarity), with a JSONL sidecar metadata
 table keyed to the same row order as the index. Retrieval returns chunk text
@@ -113,12 +128,14 @@ and its source span, not a bare vector ID.
 
 **Reranker.** `cross-encoder/ms-marco-MiniLM-L6-v2` — the lighter of the two
 candidates under consideration, chosen deliberately because it makes
-Hypothesis 1 harder to confirm.
+Hypothesis 1 harder to confirm. Revision `c5ee24cb16019beea0893ab7796b1df96625c6b8`
+(inferred†).
 
 **Generation (`pipeline.py`).** `Qwen/Qwen2.5-3B-Instruct`, fixed and unswept
 across the entire grid: this is a retrieval-configuration study, not a
 generation-quality study, and a larger generator would cost sweep days
 (≈8,600 generations across the full grid) without bearing on the hypothesis.
+Revision `aa8e72537993ba99e69dfaafa59ed015b17504d1` (inferred†).
 Answer-only-from-context prompt:
 
 ```
@@ -261,9 +278,21 @@ Bandwidth ratio against the L4 is therefore ≈5.2×, not the ≈6.8× originall
 planned — still a wide spread, wide enough for a configuration crossing to
 be visible, but the number reported here is the one actually measured, not
 the one assumed at planning time. VRAM capacity (40GB) is not a constraint
-for this study's workload regardless of the correction. Driver, CUDA, and
-library versions are `[pending: fill from the completed sweep's actual
-`prov` stamp, never typed from memory]`.
+for this study's workload regardless of the correction.
+
+**Software (A100, from the sweep's own `prov` stamp, not typed from
+memory).** Driver `580.82.07`, CUDA `12.8`, `torch 2.11.0+cu128`,
+`sentence-transformers 5.6.0`, `faiss 1.14.3`. Model revisions are reported
+in §3.1, not here — see the measured-vs-inferred note there.
+
+**A note the L4 sweep must resolve, not this one.** The provenance-pinning
+fix described in §3.1's footnote (`pins.py`, LOG.md Day 4) was made after
+the A100 sweep completed, so the L4 sweep will run at a later commit than
+`04caf49`. That later `git_sha` will therefore differ from the one recorded
+on all 96 A100 records. This is a provenance-capture change only, not a
+change to the measured retrieval/generation path: `git diff 04caf49 --
+chunker.py store.py eval.py relevance.py` is empty. §3.7 and §4 report both
+SHAs explicitly rather than picking one.
 
 ### 3.6 Metric definitions
 
@@ -337,6 +366,22 @@ both cards' frontiers to the same shape for a reason unrelated to hardware
 review process itself (one annotator, checking word overlap against a
 threshold chosen after noticing the problem) has no independent check behind
 it, so residual saturation in some of the 30 cannot be fully ruled out.
+
+**Three of four A100 model revisions are inferred, not measured.** Revision
+pinning originally covered only the two embedding models, and only wrote the
+pin to a file on the machine that loaded it first — that machine was a Colab
+VM, deleted after the sweep. `small`'s revision survives because
+`configs/model_pins.yaml` is git-tracked and was committed before the sweep
+ran; `base`, the reranker, and the generator's revisions do not, and were
+reconstructed by resolving `main` on 1 Aug 2026 under the assumption that
+each model's Hub repo was unchanged since its last update (11 months to 2.4
+years before the sweep) and has not been force-pushed or had a commit
+reverted in between (§3.1). The reranker is one of the two arms of
+Hypothesis 1, so if this assumption is wrong for
+`cross-encoder/ms-marco-MiniLM-L6-v2` specifically, the A100 measurement
+reflects a different reranker than documented. The fix (`pins.py`,
+LOG.md Day 4) makes every subsequent record self-describing — this threat
+applies to the A100 card only, not to L4.
 
 `[pending: days 5, 7 — remaining entries: two cards is not a continuum, single seed, and whatever day 6 exposes]`
 

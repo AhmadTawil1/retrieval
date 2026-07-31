@@ -11,7 +11,10 @@ import sentence_transformers
 import torch
 
 import chunker
+import embed
 import eval as eval_module
+import pins
+import pipeline
 
 
 def _git_sha() -> str:
@@ -50,6 +53,17 @@ def stamp(corpus_dir: Path = Path("corpus"), gold_path: Path = Path("data/gold.j
         "git_sha": _git_sha(),
         "corpus_sha": chunker.corpus_sha(corpus_dir),
         "gold_sha": eval_module.gold_sha(gold_path),
+        # Every model the pipeline can load, at its frozen revision. Added after
+        # the A100 sweep (LOG.md Day 4): the pin file is written at runtime on
+        # whichever machine loads first, so a pin that is not stamped into the
+        # record can be lost with the machine — which is exactly what happened.
+        "model_revisions": pins.all_pinned_revisions(
+            [
+                *embed.MODEL_IDS.values(),
+                pipeline.RERANKER_MODEL_ID,
+                pipeline.GENERATOR_MODEL_ID,
+            ]
+        ),
     }
 
 

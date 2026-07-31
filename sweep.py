@@ -114,6 +114,7 @@ def run_sweep(
             if cid in completed:
                 continue
 
+            print(f"running {cid} index={index_key} ...", flush=True)
             t0 = time.perf_counter()
             record = run_cell(cfg, gold_records, n_queries, warmup, repeats, corpus_dir, gold_path)
             elapsed = time.perf_counter() - t0
@@ -122,7 +123,7 @@ def run_sweep(
             run_count += 1
 
             status = record["run"]["status"]
-            print(f"[{run_count}] {cid} index={index_key} status={status} elapsed={elapsed:.1f}s")
+            print(f"[{len(completed)}/{len(cells)} total] {cid} status={status} elapsed={elapsed:.1f}s")
 
     print(f"sweep done: {run_count} cells run this session, {len(completed)}/{len(cells)} total complete in {output_path}")
 

@@ -1,1 +1,29 @@
+# Frozen model revisions. Written by pins.revision_for() on first load, and
+# stamped into every result record's prov.model_revisions block.
+#
+# PROVENANCE NOTE — read before citing these in the paper.
+#
+# `small` is a MEASUREMENT. It was committed at 04caf49, the git_sha recorded on
+# all 96 A100 records, so the A100 sweep provably loaded this revision.
+#
+# The three model-ID keys below are INFERENCES, not measurements. They were not
+# recorded during the A100 sweep: the runtime-written pin for bge-base existed
+# only on the Colab VM, which was deleted before it could be read, and the
+# reranker and generator were loaded with no revision argument at all.
+#
+# They were recovered by resolving `main` on 1 Aug 2026, and are believed equal
+# to what the sweep resolved because each repo's last update predates the
+# 31 Jul 2026 sweep by 11 months to 2.4 years:
+#   BAAI/bge-base-en-v1.5               last updated 21 Feb 2024
+#   cross-encoder/ms-marco-MiniLM-L6-v2 last updated 29 Aug 2025
+#   Qwen/Qwen2.5-3B-Instruct            last updated 25 Sep 2024
+# The inference assumes no force-push or reverted commit on those repos. Say so
+# in PAPER.md §3.1 and §5 rather than presenting these as recorded values.
+#
+# From the L4 run onward these are measurements: provenance.stamp() writes
+# model_revisions into every record.
+
 small: 5c38ec7c405ec4b44b94cc5a9bb96e735b38267a
+BAAI/bge-base-en-v1.5: a5beb1e3e68b9ab74eb54cfd186867f64f240e1a
+cross-encoder/ms-marco-MiniLM-L6-v2: c5ee24cb16019beea0893ab7796b1df96625c6b8
+Qwen/Qwen2.5-3B-Instruct: aa8e72537993ba99e69dfaafa59ed015b17504d1

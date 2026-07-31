@@ -19,6 +19,7 @@ from sentence_transformers import CrossEncoder
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
 import embed
+import pins
 from store import Hit, Store
 
 GENERATOR_MODEL_ID = "Qwen/Qwen2.5-3B-Instruct"
@@ -57,15 +58,18 @@ def config_id(cfg: Config) -> str:
 def _get_generator():
     global _generator_model, _generator_tokenizer
     if _generator_model is None:
-        _generator_tokenizer = AutoTokenizer.from_pretrained(GENERATOR_MODEL_ID)
-        _generator_model = AutoModelForCausalLM.from_pretrained(GENERATOR_MODEL_ID, torch_dtype="auto").to(DEVICE)
+        rev = pins.revision_for(GENERATOR_MODEL_ID)
+        _generator_tokenizer = AutoTokenizer.from_pretrained(GENERATOR_MODEL_ID, revision=rev)
+        _generator_model = AutoModelForCausalLM.from_pretrained(
+            GENERATOR_MODEL_ID, revision=rev, torch_dtype="auto"
+        ).to(DEVICE)
     return _generator_model, _generator_tokenizer
 
 
 def _get_reranker() -> CrossEncoder:
     global _reranker
     if _reranker is None:
-        _reranker = CrossEncoder(RERANKER_MODEL_ID)
+        _reranker = CrossEncoder(RERANKER_MODEL_ID, revision=pins.revision_for(RERANKER_MODEL_ID))
     return _reranker
 
 

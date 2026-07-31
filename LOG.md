@@ -211,4 +211,91 @@ Compressed schedule continues (Day 3 same session as Days 1–2).
   machine has run the full parameters). First-run cost: model downloads
   (embedding model, reranker, Qwen2.5-3B-Instruct ~6GB) all completed in
   under 30s on Colab's network — much faster than expected, not a concern.
-  `[outcome: pending — sweep in progress]`
+- `verify_grid.py data/a100.jsonl --sanity`: 96/96 config_ids present, no
+  duplicates, no bad status — GREEN. Sanity checks behave as expected:
+  recall@5 rises with top_k then plateaus after k=5 (0.799→0.889→0.889→0.888),
+  ctx_prec falls (0.284→0.198), rerank stage at top_k=20 costs a real 97.9ms
+  p50 (not a no-op). Two provenance incidents surfaced and closed while
+  reviewing the records — one false alarm, one real gap — detailed below.
+  `[outcome: met]` — 96/96 valid records, full protocol, real A100 card.
+
+### False alarm — `corpus_sha` mismatch, resolved. No re-run needed.
+
+- A session reviewing the A100 records reported that their `corpus_sha`
+  (`a2a9aecc…`) did not match the local corpus (`2b3486e1…`), and inferred the
+  Colab PDFs were byte-different from the committed ones — which would have
+  meant the gold spans described a different document set than the one measured.
+  That inference was wrong and the conclusion is the reverse.
+- Checked directly: `a2a9aecc…` is the hash of **both** the working tree and the
+  git blobs at `HEAD:corpus/*` — verified by hashing `git cat-file blob` output
+  rather than files on disk. Zero files differ between worktree and blob. **The
+  A100 records are correct and the Colab corpus was byte-identical to the repo.**
+- `2b3486e1…` reproduced exactly, two ways: hashing in unsorted `glob()` order,
+  or hashing in case-insensitive filename order. Both give the same result here
+  because the corpus lives on a Windows-backed filesystem, whose directory
+  enumeration is case-insensitive. So the reviewing session did not call
+  `chunker.corpus_sha` — it reimplemented the hash and dropped the `sorted()`.
+- Why the order matters: Python's `sorted()` is ASCII-ordinal, so uppercase
+  precedes lowercase and `uv.pdf` / `vLLM.pdf` sort **last**. Case-insensitive
+  order puts `Agentic_AI` before `API` and `LLM` after `LangGraph`/`LlamaIndex`.
+  Same bytes, same files, different concatenation order, different SHA1.
+- Also ruled out while checking: CRLF/LF filter mangling (repo has no
+  `.gitattributes`, so it was a live hypothesis — both conversions produce
+  hashes matching nothing), and extra or missing files in `corpus/`.
+- Audited every corpus enumeration in the repo for the same bug:
+  `chunker.py:150,159,178` and `label_helper.py:26,33` all sort;
+  `eval.py:92` globs unsorted but builds a `set`, where order is irrelevant.
+  **No latent ordering bug in the codebase.** The defect was only in the
+  ad-hoc verification, not in anything that produced data.
+- **Lesson worth keeping**: provenance checks must call the same function that
+  wrote the field. A reimplemented check compares two different definitions and
+  reports a data problem that does not exist. This one nearly cost a full re-run
+  day out of a 28-day schedule.
+- Day 4 data stands. Proceed to Day 5 (L4) with `corpus_sha = a2a9aecc…` as the
+  value `verify_pair.py` must find on both sides.
+
+### Real gap — model revisions not recorded for the A100 sweep
+
+- Unlike the `corpus_sha` alarm, this one is genuine. `provenance.stamp()`
+  recorded the `sentence_transformers` package version but no model revisions,
+  so `data/a100.jsonl` does not say which model weights produced the numbers.
+- **Worse than first reported.** The review flagged `base` only. Audit found
+  `pipeline.py` loaded the reranker as `CrossEncoder(RERANKER_MODEL_ID)` and the
+  generator as `from_pretrained(GENERATOR_MODEL_ID)` — no revision argument, and
+  neither went through the pin mechanism at all. Three of four models
+  unrecorded, one of them the cross-encoder, which *is* Hypothesis 1.
+- **Better than first reported for `small`.** `configs/model_pins.yaml` is
+  tracked, and `git show 04caf49:configs/model_pins.yaml` (04caf49 being the
+  `git_sha` on all 96 records) gives `small: 5c38ec7c…`. Colab cloned that
+  commit, so `_load_pins()` returned it. That one is a measurement, not a guess.
+- Colab VM was disconnected and deleted before the runtime-written `base` pin
+  could be read. **Direct evidence for `base` is unrecoverable.**
+- Fallback used: resolved `main` on 1 Aug 2026 via the HF API. Defensible
+  because each repo's last update predates the 31 Jul 2026 sweep —
+  bge-base 21 Feb 2024, ms-marco-MiniLM-L6-v2 29 Aug 2025,
+  Qwen2.5-3B-Instruct 25 Sep 2024 — so `main` was static across the window.
+  Assumes no force-push or reverted commit. **These three are inferences and are
+  labelled as such in `configs/model_pins.yaml`; §3.1 and §5 must say so too.**
+- Fix, so it cannot recur on L4:
+  - new `pins.py` — one `revision_for(model_id)` used by every model load,
+    keyed by model ID rather than short name, with a legacy fallback so the
+    tracked `small:` line still resolves;
+  - `pipeline.py` passes `revision=` to the reranker, the generator and its
+    tokenizer;
+  - `embed.py` delegates to `pins.py` instead of its own copy;
+  - `provenance.stamp()` emits `prov.model_revisions` — all four models, every
+    record. A pin that lives only in a file can die with the machine; a pin in
+    the record cannot.
+  - `configs/model_pins.yaml` pre-seeded with all four so the L4 run does not
+    re-resolve `main`.
+- Verified: all four resolve from the file with no network call, and reading
+  them does not rewrite the file. `py_compile` clean on all four modules.
+- **Consequence for the paper — `git_sha` will differ between cards.** A100 ran
+  at 04caf49; L4 will run at the commit containing this fix. Method must state
+  both and note the delta is provenance capture only, not the measured path
+  (`git diff 04caf49 -- chunker.py store.py eval.py relevance.py` is empty).
+  Chose this over leaving three of four models unrecorded on both cards.
+- **Lesson, and it is the same shape as the corpus_sha one**: provenance that
+  lives anywhere other than the record is not provenance. `model_pins.yaml`
+  looked like a pin file but was a cache — written at runtime, on whichever
+  machine happened to load first, and never committed back.
