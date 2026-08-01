@@ -88,10 +88,13 @@ def _ok_record(cid, status="ok"):
             "prov": {"gpu": "A100", "driver": "x", "cuda": "x", "torch": "x", "sbert": "x", "faiss": "x",
                       "git_sha": "abc", "corpus_sha": "abc", "gold_sha": "abc"},
         }
+    run = {"n_queries": 30, "repeats": 3, "warmup": 3, "seed": 1337, "status": status}
+    if status == "oom":
+        run["error"] = "CUDA out of memory"
     return {
         "config": {"chunk_size": 512, "overlap": 0.15, "embed_model": "small", "top_k": 5, "reranker": "off"},
         "config_id": cid,
-        "run": {"n_queries": 30, "repeats": 3, "warmup": 3, "seed": 1337, "status": status},
+        "run": run,
         "prov": {"gpu": "A100"},
     }
 

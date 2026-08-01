@@ -159,7 +159,14 @@ def run_cell(
         return {
             "config": config_dict,
             "config_id": cid,
-            "run": {"n_queries": len(queries), "repeats": repeats, "warmup": warmup, "seed": pipeline.SEED, "status": "oom"},
+            "run": {
+                "n_queries": len(queries),
+                "repeats": repeats,
+                "warmup": warmup,
+                "seed": pipeline.SEED,
+                "status": "oom",
+                "error": str(exc),
+            },
             "prov": provenance.stamp(corpus_dir, gold_path),
         }
 
@@ -193,7 +200,11 @@ def validate_record(record: dict) -> list[str]:
             if stage not in record.get("cost", {}).get("stages_p50_ms", {}):
                 errors.append(f"cost.stages_p50_ms missing stage {stage!r}")
     elif status == "oom":
-        pass  # quality/cost are legitimately absent — a refusal is a result, not a gap
+        # quality/cost are legitimately absent — a refusal is a result, not a gap
+        # (M01-RETRIEVAL.md Day 5) — but the error text is not optional, since
+        # refusals.md is built from it, not hand-typed.
+        if not record.get("run", {}).get("error"):
+            errors.append("status=oom but run.error is missing or empty")
     else:
         errors.append(f"run.status is {status!r}, expected 'ok' or 'oom'")
 

@@ -68,14 +68,29 @@ def test_validate_record_accepts_well_formed_ok_record():
     assert validate_record(_ok_record()) == []
 
 
-def test_validate_record_accepts_oom_record_without_quality_or_cost():
-    record = {
+def _oom_record(error="CUDA out of memory") -> dict:
+    return {
         "config": {"chunk_size": 1024, "overlap": 0.15, "embed_model": "base", "top_k": 20, "reranker": "cross-encoder"},
         "config_id": "sha1:oom000000000",
-        "run": {"n_queries": 30, "repeats": 3, "warmup": 3, "seed": 1337, "status": "oom"},
+        "run": {"n_queries": 30, "repeats": 3, "warmup": 3, "seed": 1337, "status": "oom", "error": error},
         "prov": {"gpu": "L4"},
     }
-    assert validate_record(record) == []
+
+
+def test_validate_record_accepts_oom_record_without_quality_or_cost():
+    assert validate_record(_oom_record()) == []
+
+
+def test_validate_record_flags_oom_record_missing_error():
+    record = _oom_record(error="")
+    del record["run"]["error"]
+    errors = validate_record(record)
+    assert any("error" in e for e in errors)
+
+
+def test_validate_record_flags_oom_record_with_empty_error():
+    errors = validate_record(_oom_record(error=""))
+    assert any("error" in e for e in errors)
 
 
 def test_validate_record_flags_missing_top_level_key():
