@@ -7,7 +7,23 @@ Draft. Sections are filled in on the day the thing they describe is built or mea
 
 ## Abstract
 
-`[pending: day 7 — depends on the verdict]`
+Configuration-search papers for RAG pipelines report a single Pareto-optimal
+recommendation, benchmarked on whichever GPU the authors had, and say
+nothing about whether that recommendation survives a move to cheaper
+hardware. We measure it directly: an identical 96-configuration grid
+(chunk size, overlap, embedding model, top-k, reranker) swept against one
+corpus and one hand-labelled gold set on an A100-SXM4-40GB and an L4,
+provenance-stamped per record. The result is partial, not the clean
+confirmation or refutation pre-registered. Pareto-frontier membership does
+change between cards — 4 members on the A100, 6 on the L4, 3 shared — but
+the knob that moves is the embedding model, not the cross-encoder reranker
+the pre-registered hypothesis named. The reranker's own latency does
+degrade disproportionately on the weaker card (1.40× versus 1.04–1.17× for
+every other pipeline stage) — the predicted economics are real and
+measurable — but at only ~1–1.5% of a generation-dominated cell's latency,
+that disproportion is not yet large enough to flip frontier membership.
+Kendall tau between the two cards' latency rankings is 0.80: most of the
+ordering transfers, not all of it.
 
 ---
 
@@ -31,7 +47,28 @@ buys.
 order — identical composition means the recommendation transfers, and the
 thesis fails in this setting.
 
-Contribution bullets: `[pending: day 7 — depends on knowing what the contributions turned out to be]`
+**Contributions.**
+
+- A reproducible, self-describing measurement harness for comparing RAG
+  configurations across GPU tiers: every record carries its own git SHA,
+  corpus/gold hashes, and model revisions, so a result never depends on
+  external state to be trusted (§3.4). Two provenance gaps were found and
+  closed *during* this measurement (LOG.md Days 4–5), which is itself
+  evidence the discipline is load-bearing, not decorative.
+- Evidence that Pareto-frontier membership is not hardware-invariant, but
+  that the specific mechanism proposed in advance can miss even when the
+  broader claim holds: the reranker, the knob expected to be the risk, did
+  not change status; a quieter knob (embedding-model size) did. Hardware
+  sensitivity is not confined to the component that looks computationally
+  expensive.
+- A per-stage attribution showing the reranker's predicted cost/benefit
+  imbalance *is* measurable (a disproportionate 1.40× latency scaling
+  versus 1.04–1.17× elsewhere) even in a setting where it is not yet
+  decisive for frontier membership — because generation dominates per-cell
+  latency here. This names the condition (a smaller generator, or a
+  heavier reranker) under which the originally-predicted mechanism would be
+  expected to become frontier-decisive, rather than leaving "not confirmed"
+  as a dead end.
 
 ---
 
@@ -39,21 +76,24 @@ Contribution bullets: `[pending: day 7 — depends on knowing what the contribut
 
 Multi-objective RAG configuration search is a crowded literature; this work
 does not claim to be the first to locate a Pareto frontier over retrieval
-configurations. **syftr** performs multi-objective search across agentic and
-non-agentic RAG configurations, balancing latency, accuracy and cost against
-each other on a single hardware target. **RAG-Stack** identifies the
-quality–performance Pareto frontier by navigating the joint
-algorithm–system design space, and is the closest prior work to acknowledge
-that hardware options exist at all — but it explores primarily from the
-algorithm side, treating the system as a fixed backdrop rather than a swept
-variable. **RAGSmith** runs evolutionary search over complete pipelines
+configurations. **syftr** (Conway et al., 2025) performs multi-objective
+Bayesian optimization across agentic and non-agentic RAG flows, balancing
+accuracy and cost against each other on a single hardware target.
+**RAG-Stack** (Jiang, 2025) identifies the quality–performance
+Pareto frontier by navigating the joint algorithm–system design space, and
+is the closest prior work to acknowledge that hardware options exist at
+all — but it explores primarily from the algorithm side, treating the
+system as a fixed backdrop rather than a swept variable. **RAGSmith**
+(Kartal et al., 2025) runs evolutionary search over complete pipelines
 rather than greedy per-module selection, and separately reports that its
 recommended pipeline is sensitive to the dataset it was tuned on — a
 sensitivity result adjacent to, but distinct from, hardware sensitivity.
-**METIS** performs joint algorithm/system exploration for retrieval-augmented
-pipelines, again on fixed hardware. Alongside these, a growing line of
-cost–latency–quality benchmark papers treats the three-way tradeoff itself as
-the object of study, without varying the hardware the tradeoff is measured on.
+**METIS** (Ray et al., 2025) performs joint algorithm/system exploration for
+retrieval-augmented pipelines, again on fixed hardware. Alongside these, a
+growing line of cost–latency–quality benchmark papers treats the three-way
+tradeoff itself as the object of study, without varying the hardware the
+tradeoff is measured on. The underlying retrieval-augmented generation
+approach itself is Lewis et al. (2020).
 
 Across all five, the hardware tier is a constant, not a knob. RAG-Stack comes
 closest to raising the question, since it is aware that system-side choices
@@ -63,7 +103,12 @@ the configuration it recommends would still be recommended on a smaller GPU.
 
 **Existing work locates the configuration frontier on fixed hardware; whether
 the frontier's composition is stable across hardware tiers has not been
-tested.**
+tested.** The finding here is the same *shape* as an earlier result of ours
+(Tawil, 2026): that paper found the optimal RAG *strategy* (agentic versus
+naive) depends on model scale; this one finds the optimal RAG
+*configuration* depends on hardware tier. Both say the same thing about
+what "optimal" means in this literature — it is conditional on something
+the recommending paper held fixed.
 
 ---
 
@@ -91,8 +136,8 @@ be defined as source-document spans instead of chunk IDs — chunk IDs would
 not survive a change in chunk size, and three of the five grid knobs change
 the chunking.
 
-**Embeddings (`embed.py`).** `sentence-transformers` behind one interface,
-two models registered:
+**Embeddings (`embed.py`).** `sentence-transformers` (Reimers & Gurevych,
+2019) behind one interface, two BGE models (Xiao et al., 2023) registered:
 
 | Name | Model | Dim | Revision |
 |---|---|---|---|
@@ -121,17 +166,19 @@ onward this gap is closed: `provenance.stamp()` writes every model's
 resolved revision into `prov.model_revisions` on every record, so a pin can
 no longer be lost with the machine that wrote it.
 
-**Vector store (`store.py`).** FAISS `IndexFlatIP` over L2-normalised
+**Vector store (`store.py`).** FAISS (Douze et al., 2024) `IndexFlatIP` over L2-normalised
 embeddings (inner product = cosine similarity), with a JSONL sidecar metadata
 table keyed to the same row order as the index. Retrieval returns chunk text
 and its source span, not a bare vector ID.
 
-**Reranker.** `cross-encoder/ms-marco-MiniLM-L6-v2` — the lighter of the two
-candidates under consideration, chosen deliberately because it makes
-Hypothesis 1 harder to confirm. Revision `c5ee24cb16019beea0893ab7796b1df96625c6b8`
-(inferred†).
+**Reranker.** `cross-encoder/ms-marco-MiniLM-L6-v2` — a Sentence-BERT
+cross-encoder (Reimers & Gurevych, 2019) trained on MS MARCO (Bajaj et al.,
+2016) — the lighter of the two candidates under consideration, chosen
+deliberately because it makes Hypothesis 1 harder to confirm. Revision
+`c5ee24cb16019beea0893ab7796b1df96625c6b8` (inferred†).
 
-**Generation (`pipeline.py`).** `Qwen/Qwen2.5-3B-Instruct`, fixed and unswept
+**Generation (`pipeline.py`).** `Qwen/Qwen2.5-3B-Instruct` (Qwen Team,
+2024), fixed and unswept
 across the entire grid: this is a retrieval-configuration study, not a
 generation-quality study, and a larger generator would cost sweep days
 (≈8,600 generations across the full grid) without bearing on the hypothesis.
@@ -432,7 +479,7 @@ produce on a re-run (§5). The frontier-membership *result* is real and
 reproducible from the recorded data; whether `embed_model` would swap the
 same way on a second L4 sweep is not established here.
 
-**Kendall tau (latency ordering, A100 vs L4, n=96): 0.802.** Strong but not
+**Kendall tau** (Kendall, 1938) **(latency ordering, A100 vs L4, n=96): 0.802.** Strong but not
 perfect — most of the grid's speed ranking transfers, with enough
 reordering to produce the frontier delta above.
 
@@ -511,16 +558,86 @@ expected to change which chunks are retrieved or the shape of the recall/p95
 frontier, only the exact wording of refused-vs-answered generations at the
 margin, which this measurement does not score.
 
-`[pending: day 7 — whatever day 6's frontier comparison exposes]`
+**One corpus.** All 192 measurements (96 cells × 2 cards) run against a
+single 15-document, single-subject corpus (§3.1). Whether frontier
+composition is corpus-dependent — a technical corpus with code listings and
+structured documents, versus prose-heavy general text — is untested here; a
+different corpus could change which configs are close enough to tie for a
+knob like `embed_model` to flip the way it did (§4).
+
+**One embedding family.** `small` and `base` are both `BAAI/bge-*-en-v1.5`
+— same architecture and training recipe, differing only in dimension
+(§3.1). The measured hardware-sensitivity is therefore about embedding
+*size* within one family, not embedding *architecture*; whether a
+different family (different tokenizer, pooling, or training objective)
+would show the same or a different swap is not addressed by this
+measurement.
+
+**Rented hosts have noisy neighbours, and there is no repeated-sweep
+variance estimate.** p50/p95 exist because of this (§3.4), but each of the
+192 cells ran once per card, not N sweeps averaged — there is no measured
+run-to-run variance to compare against. The `embed_model` frontier swap
+(§4) turns on latency gaps of 9–44ms against a ~5,500–5,900ms cell — under
+1%, exactly the scale host noise could produce. The result stands as
+measured and is reproducible from the recorded data; whether it replicates
+on a second L4 sweep is not established.
 
 ---
 
 ## 6. Conclusion
 
-`[pending: day 7]`
+Do not assume a Pareto-optimal RAG configuration transfers unchanged from a
+benchmarking GPU to a cheaper deployment card — even when it mostly does.
+Here, the knob a practitioner would watch first, the reranker, because it
+has an obvious latency cost, did not change status; a quieter knob
+(which embedding-model size wins the margin) did, and only because two
+configurations happened to be close enough to tie. The lesson is not
+"watch the reranker" — it is that *any* near-tied pair on your frontier is
+a hardware-transfer risk, not just the expensive-looking knob. Concretely:
+before shipping, re-run your top handful of frontier candidates, not just
+the single winner, on your actual deployment hardware — a config that
+loses by a hair on the benchmarking card can win on the target one. And if
+your generator is small enough that non-generation stages are a meaningful
+share of latency, budget extra scrutiny for the reranker specifically: its
+cost is shown here to degrade faster than the rest of the pipeline, even
+though it was not decisive in this generator-dominated setup.
 
 ---
 
 ## References
 
-`[pending: day 7]`
+Identifiers verified against primary sources (arXiv abstract pages fetched
+directly) on 2 Aug 2026, not copied from a to-locate list.
+
+1. Bajaj, P., Campos, D., Craswell, N., Deng, L., Gao, J., Liu, X.,
+   Majumder, R., McNamara, A., Mitra, B., Nguyen, T., Rosenberg, M., Song,
+   X., Stoica, A., Tiwary, S., & Wang, T. (2016). *MS MARCO: A Human
+   Generated MAchine Reading COmprehension Dataset*. arXiv:1611.09268.
+2. Conway, A., Dey, D., Hackmann, S., Hausknecht, M., Schmidt, M.,
+   Steadman, M., & Volynets, N. (2025). *syftr: Pareto-Optimal Generative
+   AI*. arXiv:2505.20266.
+3. Douze, M., Guzhva, A., Deng, C., Johnson, J., Szilvasy, G., Mazaré,
+   P.-E., Lomeli, M., Hosseini, L., & Jégou, H. (2024). *The Faiss
+   library*. arXiv:2401.08281.
+4. Jiang, W. (2025). *RAG-Stack: Co-Optimizing RAG Quality and Performance
+   From the Vector Database Perspective*. arXiv:2510.20296.
+5. Kartal, M. Y., Kose, S. K., Sevinç, K., & Aktas, B. (2025). *RAGSmith: A
+   Framework for Finding the Optimal Composition of Retrieval-Augmented
+   Generation Methods Across Datasets*. arXiv:2511.01386.
+6. Kendall, M. G. (1938). A New Measure of Rank Correlation. *Biometrika*,
+   30(1–2), 81–93. https://doi.org/10.1093/biomet/30.1-2.81
+7. Lewis, P., Perez, E., Piktus, A., Petroni, F., Karpukhin, V.,
+   Goyal, N., Küttler, H., Lewis, M., Yih, W., Rocktäschel, T., Riedel, S.,
+   & Kiela, D. (2020). Retrieval-Augmented Generation for
+   Knowledge-Intensive NLP Tasks. *NeurIPS*. arXiv:2005.11401.
+8. Qwen Team (2024). *Qwen2.5 Technical Report*. arXiv:2412.15115.
+9. Ray, S., Pan, R., Gu, Z., Du, K., Feng, S., Ananthanarayanan, G.,
+   Netravali, R., & Jiang, J. (2025). METIS: Fast Quality-Aware RAG
+   Systems with Configuration Adaptation. *SOSP '25*. arXiv:2412.10543.
+10. Reimers, N., & Gurevych, I. (2019). Sentence-BERT: Sentence Embeddings
+    using Siamese BERT-Networks. *EMNLP-IJCNLP*. arXiv:1908.10084.
+11. Tawil, A. (2026). *David vs Goliath: agentic versus naive RAG across
+    model scales*. Unpublished manuscript.
+12. Xiao, S., Liu, Z., Zhang, P., Muennighoff, N., Lian, D., & Nie, J.-Y.
+    (2023). *C-Pack: Packed Resources For General Chinese Embeddings*
+    (BGE models). arXiv:2309.07597.

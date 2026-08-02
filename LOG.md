@@ -420,3 +420,61 @@ instead of a separate near-empty file.
 - `[outcome: met]` — the crossing (partial, not the predicted one) plus the
   name of the knob that actually moved: `embed_model`, flagged as a small
   and not-independently-replicated effect.
+
+---
+
+## Day 7 — Sun 2 Aug · Paper 1, writing only
+
+No code today, per the plan. Reconciled §3 against this file first: read
+every claim in §3.1–§3.8 against the corresponding LOG.md entries
+(corpus_sha, gold_sha, model revisions, hardware/software table, generation
+count) — nothing had drifted. Every number in §3 was already grounded in
+real measured data as it was written across Days 1–6, not filled in
+speculatively then, so there was nothing to correct today. Worth recording
+that the "reconcile" step can validly find zero problems, not just as a
+formality.
+
+- **Abstract** written leading with the verdict, not the setup: partial,
+  frontier changed, reranker didn't move, embed_model did, mechanism real
+  but not decisive. 178 words (target ~150 — over, but it's the one section
+  that has to carry the whole finding in isolation for a reader who stops
+  there).
+- **§1 contribution bullets** written now that the actual contributions are
+  known: the provenance harness itself (two gaps found and closed mid-study
+  is evidence the discipline works), the specific-mechanism-missed finding,
+  and the per-stage attribution naming the condition under which the
+  original prediction would become decisive.
+- **§5 Threats** — assembled the six entries M01-RETRIEVAL.md named
+  (single annotator, question distribution, lexical saturation, inferred
+  revisions, two cards not a continuum, single seed — the first five
+  already existed from Days 2–4; two cards/single seed from Day 5) and
+  added the three still missing: **one corpus**, **one embedding family**,
+  and **rented hosts have noisy neighbours with no repeated-sweep variance
+  estimate** — the last one ties directly to §4's embed_model swap, which
+  turns on a sub-1% latency gap. 758 words against a ~250 target. Not cut:
+  REFERENCE.md's own rule is that a threat named honestly with its
+  consequence stated earns its length, and every entry here is a specific,
+  evidenced claim, not padding — cutting one to hit a word count would mean
+  deleting evidence, not prose.
+- **§6 Conclusion** — what to actually do differently: don't watch the
+  reranker because it looks expensive, watch every near-tied pair on the
+  frontier, because hardware-transfer risk lives in the margin, not in
+  whichever knob looks computationally heavy. 179 words.
+- **References** — 12 entries. Explicitly did not copy identifiers from
+  REFERENCE.md §15's to-locate list even where a name matched; fetched each
+  arXiv abstract page directly (`WebFetch`, not just search-result
+  snippets) for the exact author list and title. **Caught a real error
+  doing this**: syftr's first author is Conway, not the "Aggarwal" I'd
+  drafted from an unread search snippet — corrected before it shipped.
+  RAG-Stack is single-authored (Jiang) — checked rather than assumed a
+  team. Kendall (1938) has no arXiv (predates it); cited by DOI instead.
+  The "David vs Goliath" self-citation, per Ahmad's call, goes in as an
+  unpublished manuscript — no invented venue or URL.
+- **Length check**: Abstract and §6 over budget by ~20–30 words each (the
+  verdict doesn't compress further without losing the "not confirmed, not
+  refuted, here's what actually moved" shape); §5 over by ~3×, justified
+  above; §1 Introduction under budget (330 vs ~400) and left alone rather
+  than padded to hit a number.
+- `[outcome: met]` — finished draft: Figure 1, three tables (frontier
+  membership, hardware/software, references), a stated verdict (partial,
+  embed_model not reranker), 12 verified references.
