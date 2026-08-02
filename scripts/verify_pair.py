@@ -105,7 +105,9 @@ if __name__ == "__main__":
 
     if args.refusals:
         args.refusals.parent.mkdir(parents=True, exist_ok=True)
-        args.refusals.write_text(render_refusals_md([(str(args.a), a_records), (str(args.b), b_records)]))
+        args.refusals.write_text(
+            render_refusals_md([(str(args.a), a_records), (str(args.b), b_records)]), encoding="utf-8"
+        )
         print(f"refusals written to {args.refusals}")
 
     raise SystemExit(1 if errors else 0)

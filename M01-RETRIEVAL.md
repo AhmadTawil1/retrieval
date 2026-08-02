@@ -3,7 +3,11 @@
 
 **Dates:** Mon 3 Aug → Sun 9 Aug 2026 · 6 measure + 1 write
 **Paper:** *Does the Pareto-optimal RAG configuration transfer across GPU tiers?*
-**Status:** not started
+**Status:** Day 6 done — **Hypothesis 1: PARTIAL.** Frontier membership changed
+(A100: 4 members, L4: 6, 3 shared), but the reranker is not the knob that
+moved — `embed_model` is. Cross-encoder reranking sits on *both* cards'
+frontiers. The specific prediction (reranker flips off, chunk/top-k
+invariant) missed. Details: `PAPER.md` §4.
 
 This is the execution plan for Block 1. Policy and rationale live in `REFERENCE.md`; this file holds the daily detail. Where the two disagree, `REFERENCE.md` wins.
 

@@ -378,7 +378,78 @@ never silently dropped.
 
 ## 4. Results
 
-`[pending: day 6]`
+**Verdict: partial.** Frontier membership changed between A100 and L4 — the
+two frontiers are not identical, so Hypothesis 1's refutation condition
+(SCOPE.md) does not hold. But the knob that moved is `embed_model`, not the
+reranker, and cross-encoder reranking appears on *both* cards' frontiers.
+The specific mechanism Hypothesis 1 named — reranker flips from
+Pareto-optimal to Pareto-dominated, chunk size and top-k unmoved — did not
+happen. Full numbers below; all reproducible with `uv run python
+scripts/analysis.py data/a100.jsonl data/l4.jsonl`.
+
+**Figure 1** (`figs/fig1.pdf`) plots recall@5 against p95 latency for all 96
+configs on both cards. Filled, ringed points are that card's Pareto
+frontier; thin gray lines connect the same `config_id` across cards for
+every frontier-relevant point, so a reader can trace one configuration's
+move.
+
+**Frontier membership table.** 7 configs sit on either frontier (89 sit on
+neither, dominated on both cards):
+
+| config_id | chunk | overlap | embed | top_k | reranker | recall@5 | A100 p95 | L4 p95 | delta |
+|---|---|---|---|---|---|---|---|---|---|
+| `9df54f160c03` | 256 | 0.0 | base | 3 | off | 0.833 | 5249ms | 5659ms | both |
+| `71d5acecfa94` | 256 | 0.0 | base | 5 | off | 0.900 | 5329ms | 5672ms | both |
+| `7854342500f9` | 1024 | 0.0 | base | 5 | off | 0.967 | 5555ms | 6048ms | both |
+| `93ce410a3c36` | 1024 | 0.15 | **small** | 3 | cross-encoder | 0.933 | 5474ms | 5876ms | **A100 only** |
+| `0ca6aa10c184` | 1024 | 0.15 | **base** | 3 | cross-encoder | 0.933 | 5483ms | 5832ms | **L4 only** |
+| `8edd4990fff0` | 256 | 0.0 | small | 3 | off | 0.667 | 5280ms | 5621ms | L4 only |
+| `1da8ed40f4d1` | 256 | 0.0 | small | 3 | cross-encoder | 0.700 | 5298ms | 5623ms | L4 only |
+
+A100 frontier: 4 members. L4 frontier: 6 members. 3 shared.
+
+**Refusal table.** Empty on both cards — zero OOMs on either A100 or L4
+(`results/refusals.md`), contrary to the plan's expectation at
+chunk=1024×top_k=20×cross-encoder×base (LOG.md Day 5).
+
+**Knob-by-knob.** For every knob, the *set* of values appearing among
+frontier configs is identical between cards (both cards' frontiers use
+chunk_size {256, 1024}, overlap {0.0, 0.15}, embed_model {small, base},
+top_k {3, 5}, and reranker {off, cross-encoder}) — at that coarse level,
+nothing moved. What actually moved is visible only by pairing specific
+configs: `93ce410a3c36` (embed=small) and `0ca6aa10c184` (embed=base) are
+otherwise-identical (chunk=1024, overlap=0.15, top_k=3, reranker=on,
+recall=0.933 on both cards) — the only difference between them is
+`embed_model`, and which one wins the frontier slot swaps between cards.
+`embed_model` is the knob that moved, not the reranker.
+
+**This swap is small in absolute terms and is flagged, not oversold.** The
+latency gap deciding it is 9ms (A100: small faster by 5474 vs 5483) and
+44ms (L4: base faster by 5832 vs 5876) — under 1% of the ~5,500–5,900ms
+total. With p95 over 90 measurements and no repeated-sweep variance
+estimate, this is within the range a rented host's noisy neighbours could
+produce on a re-run (§5). The frontier-membership *result* is real and
+reproducible from the recorded data; whether `embed_model` would swap the
+same way on a second L4 sweep is not established here.
+
+**Kendall tau (latency ordering, A100 vs L4, n=96): 0.802.** Strong but not
+perfect — most of the grid's speed ranking transfers, with enough
+reordering to produce the frontier delta above.
+
+**Per-stage attribution — the reranker's mechanism is present, just not
+decisive here.** Reranking adds a mean +0.018 recall@5 (identical on both
+cards, as expected — quality doesn't depend on hardware) at a real latency
+cost. That cost does *not* scale like the rest of the pipeline: the
+rerank stage's own p50 grows 1.40× from A100 to L4, against 1.14× for
+generate, 1.04× for embed, and ~1.00× for search (FAISS search stays
+CPU-bound regardless of GPU) — an overall p95 ratio of 1.14× across shared
+configs. The reranker is the one stage whose cost degrades
+disproportionately on the weaker card, which is exactly Hypothesis 1's
+claimed economics. It does not flip any config's frontier status here
+because generation dominates total latency (rerank is ~1–1.5% of a cell's
+p95; the disproportionate slowdown has nowhere large enough to act). A
+generator with a smaller share of per-cell latency, or a heavier reranker,
+is where this mechanism would be expected to become frontier-decisive.
 
 ---
 

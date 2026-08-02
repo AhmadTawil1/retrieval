@@ -347,3 +347,76 @@ renting anything.
   package restructure.
 - `[outcome: met]` — two complete 96-cell grids over the identical config
   space, `verify_pair.py` green, refusals log written (empty, honestly).
+
+---
+
+## Day 6 — Sat 2 Aug · The frontier, then the verdict
+
+`plot.py` was assumed to exist from Block 0 (skipped, same as Day 1/3's
+`bench.py`/`provenance.py`) — its job folded into `scripts/analysis.py`
+instead of a separate near-empty file.
+
+- Built `retrieval/pareto.py`: `pareto_frontier()` (non-dominated set over
+  recall@5/p95, OOM-excluded by construction per §3.8) and `kendall_tau_b()`
+  (tie-corrected, no scipy dependency — O(n²) pair counting, trivial at
+  n=96). 13 tests, hand-built cases with known frontiers/tau values.
+- Built `scripts/analysis.py`: frontier delta table, knob-by-knob breakdown,
+  latency Kendall tau, reranker per-stage attribution, Figure 1. 9 tests on
+  the pure-logic helpers. Everything in PAPER.md §4 traces to this script's
+  output (`results/analysis.md`), not hand-typed.
+- **Bug caught before it shipped:** `Path.write_text()` with no encoding
+  argument used the platform default on this Windows box, mangling the
+  em-dash in the report's own title line. Fixed in both `analysis.py` and
+  `verify_pair.py` (`--refusals` had the same latent bug, just never hit it
+  — `results/refusals.md`'s content happened to be pure ASCII). Caught by
+  actually reading the written file, not just the console print (which
+  stayed mangled — that's the Windows terminal's encoding, unrelated, left
+  alone).
+- Figure 1 built per the dataviz skill: categorical slots 1/2 (blue/orange,
+  validated all-pairs for a 2-series scatter) for A100/L4, frontier members
+  filled+ringed+directly labelled (short config_id), non-frontier members
+  small and low-alpha, thin connector lines only between frontier-relevant
+  pairs (not all 96 — would have been unreadable), legend present, no dual
+  axis. Rendered, screenshotted, and eyeballed (dataviz step 7) before
+  calling it done — first pass had a redundant "(frontier marked)" suffix
+  on the legend labels since the title already says what filled means; cut.
+- **`pyproject.toml`:** added `matplotlib` — first new dependency since Day 1.
+
+### The result
+
+- A100 frontier: 4 members. L4 frontier: 6. 3 shared, 1 A100-only, 3
+  L4-only. Not identical — SCOPE.md's refutation condition does not hold.
+- **The reranker did not flip.** Cross-encoder reranking is present on
+  *both* cards' frontiers. At the knob level (which values appear among
+  frontier configs at all) nothing moved — every knob shows the same
+  value-set on both cards. What actually moved is only visible by pairing
+  specific configs: `93ce410a3c36` (embed=small) and `0ca6aa10c184`
+  (embed=base) are identical on every other knob and tied at recall=0.933;
+  which one wins the frontier slot swaps between cards. **`embed_model` is
+  the knob that moved — not the reranker.** SCOPE.md's pre-registered
+  **PARTIAL** condition ("frontier membership changes but the reranker is
+  not the knob that moved") is exactly this outcome. The specific
+  prediction missed; recorded plainly, not softened.
+- **Flagged, not hidden:** the swap turns on a 9ms (A100) / 44ms (L4)
+  latency gap — under 1% of a ~5,500-5,900ms cell, with no repeated-sweep
+  variance estimate to rule out rented-host noise as the actual cause. The
+  frontier delta itself is real and reproducible from the recorded data;
+  whether `embed_model` would swap the same way on a second L4 sweep is not
+  established. Said so in PAPER.md §4 directly, not buried in §5.
+- Kendall tau (latency ordering, A100 vs L4, n=96): **0.802** — strong but
+  imperfect transfer, consistent with a small but real reordering across
+  the grid, not just at the frontier.
+- **Per-stage attribution — the reranker's predicted mechanism is real,
+  just not decisive at this scale.** Mean recall gain from reranking:
+  +0.018, identical on both cards (expected — quality doesn't depend on
+  hardware). Rerank-stage p50 ratio L4/A100: **1.40×** — disproportionate
+  against generate (1.17×), embed (1.04×), search (~1.00×, FAISS stays
+  CPU-bound), and the overall p95 ratio (1.14×). The reranker is the one
+  stage that degrades worse than the rest of the pipeline on the weaker
+  card, exactly Hypothesis 1's claimed economics — it just doesn't have
+  enough absolute latency (rerank is ~1-1.5% of a cell's p95; generation
+  dominates) to flip any config's frontier status in this measurement.
+- Set the hypothesis pill on `M01-RETRIEVAL.md`'s header: **PARTIAL**.
+- `[outcome: met]` — the crossing (partial, not the predicted one) plus the
+  name of the knob that actually moved: `embed_model`, flagged as a small
+  and not-independently-replicated effect.
