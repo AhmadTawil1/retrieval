@@ -1,0 +1,3 @@
+# Refusals
+
+No refusals recorded.

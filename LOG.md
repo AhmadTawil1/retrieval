@@ -299,3 +299,51 @@ Compressed schedule continues (Day 3 same session as Days 1–2).
   lives anywhere other than the record is not provenance. `model_pins.yaml`
   looked like a pin file but was a cache — written at runtime, on whichever
   machine happened to load first, and never committed back.
+
+---
+
+## Day 5 — Sat 2 Aug · The identical grid on L4
+
+Restructure landed first (`retrieval/` package, `scripts/` entry points,
+`pins.py`/`provenance.py` fix, `verify_pair.py`, OOM `run.error` capture,
+§3.8 and two §5 threats written before any L4 data existed) — see the
+restructure commit and Day 4's entries above. All 56 tests green before
+renting anything.
+
+- **Card confirmed before the sweep started:** `torch.cuda.get_device_name(0)`
+  → `NVIDIA L4`, matching the Colab Pro runtime selection. No substitution.
+- Ran `scripts/sweep.py --output /content/drive/MyDrive/retrieval_results/l4.jsonl`
+  — Drive-backed output again, same rationale as Day 4 (local Colab disk does
+  not survive a disconnect). Downloaded to `data/l4.jsonl` on completion.
+- `verify_grid.py data/l4.jsonl --sanity`: **96/96 config_ids present, no
+  duplicates, no bad status — GREEN.**
+- **Zero OOMs.** The plan (M01-RETRIEVAL.md Day 5) flagged chunk_size=1024 ×
+  top_k=20 × reranker=cross-encoder × embed_model=base as the likely
+  casualty at 24GB. It ran clean. Recorded as found, not chased or
+  explained away — `results/refusals.md` says "No refusals recorded." and
+  that is the honest result, not evidence something is broken. §3.8's
+  frontier-exclusion rule for OOM cells therefore has nothing to exclude
+  this time; it stays written for the record and for any future rerun.
+- **`verify_pair.py data/a100.jsonl data/l4.jsonl --refusals results/refusals.md`:
+  GREEN.** Identical 96-member `config_id` sets, single agreed `corpus_sha`
+  (`a2a9aecc…`) and `gold_sha` (`3afa042d…`) across both files — the
+  comparison Day 6 needs is valid.
+- **Quality metrics are identical to the A100's, cell for cell**
+  (recall@5 0.799/0.889/0.889/0.888 by top_k, ctx_prec
+  0.284/0.199/0.198/0.198) — expected and a useful cross-check: retrieval
+  decisions depend on embeddings/reranker/corpus/gold, none of which differ
+  between cards, so identical quality numbers confirm the two sweeps ran
+  the same retrieval logic, not just the same config grid. Only cost
+  numbers should differ, and they do — e.g. rerank stage p50 at top_k=20:
+  97.9ms (A100) vs 151.5ms (L4).
+- **Model revisions identical on both records** (`small` `5c38ec7c…`, `base`
+  `a5beb1e3…`, reranker `c5ee24cb…`, generator `aa8e7253…`) despite the
+  differing `git_sha` — confirms the Day 4 pin fix worked as intended: same
+  weights, self-describing on both cards, no drift.
+- `git_sha` differs from A100's as expected (`04caf49` → `3761de1`) —
+  verified provenance-capture-only per §3.5: `chunker.py`, `store.py`,
+  `eval.py`, `relevance.py` (the actual measured path) are byte-identical
+  across the two commits except two import-statement lines from the
+  package restructure.
+- `[outcome: met]` — two complete 96-cell grids over the identical config
+  space, `verify_pair.py` green, refusals log written (empty, honestly).

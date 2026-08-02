@@ -280,19 +280,33 @@ be visible, but the number reported here is the one actually measured, not
 the one assumed at planning time. VRAM capacity (40GB) is not a constraint
 for this study's workload regardless of the correction.
 
-**Software (A100, from the sweep's own `prov` stamp, not typed from
-memory).** Driver `580.82.07`, CUDA `12.8`, `torch 2.11.0+cu128`,
-`sentence-transformers 5.6.0`, `faiss 1.14.3`. Model revisions are reported
-in §3.1, not here — see the measured-vs-inferred note there.
+**Software, from each sweep's own `prov` stamp, not typed from memory.**
 
-**A note the L4 sweep must resolve, not this one.** The provenance-pinning
-fix described in §3.1's footnote (`pins.py`, LOG.md Day 4) was made after
-the A100 sweep completed, so the L4 sweep will run at a later commit than
-`04caf49`. That later `git_sha` will therefore differ from the one recorded
-on all 96 A100 records. This is a provenance-capture change only, not a
-change to the measured retrieval/generation path: `git diff 04caf49 --
-chunker.py store.py eval.py relevance.py` is empty. §3.7 and §4 report both
-SHAs explicitly rather than picking one.
+| | A100 | L4 |
+|---|---|---|
+| Driver | `580.82.07` | `580.82.07` |
+| CUDA | `12.8` | `13.0` |
+| `torch` | `2.11.0+cu128` | `2.13.0+cu130` |
+| `sentence-transformers` | `5.6.0` | `5.6.1` |
+| `faiss` | `1.14.3` | `1.14.3` |
+| `git_sha` | `04caf49` | `3761de1` |
+
+Model revisions (§3.1) are identical on both records — `small`
+`5c38ec7c…`, `base` `a5beb1e3…`, reranker `c5ee24cb…`, generator
+`aa8e7253…` — so despite the differing `git_sha`, both cards loaded exactly
+the same four model weights.
+
+**The `git_sha` gap is provenance-capture only, not a measured-path
+change.** The pinning fix (`pins.py`, LOG.md Day 4) landed between the two
+sweeps, so the L4 sweep ran at a later commit than the A100's. Checked
+directly rather than assumed: `diff <(git show 04caf49:chunker.py)
+<(git show 3761de1:retrieval/chunker.py)` and the same for `store.py`,
+`eval.py`, `relevance.py` — every file the retrieval/generation path
+actually executes — are byte-identical except two import-statement lines
+(`from chunker import Chunk` → `from .chunker import Chunk`, and the
+equivalent for `relevance`), a consequence of the Day-4→5 package
+restructure, not a behavior change. §3.7 and §4 report both SHAs
+explicitly rather than picking one.
 
 ### 3.6 Metric definitions
 
