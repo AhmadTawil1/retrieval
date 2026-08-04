@@ -13,3 +13,8 @@ wheels/
 
 # Regenerable build artifacts
 .cache/
+
+# Internal working docs — not for public repo
+/LOG.md
+/M01-RETRIEVAL.md
+/PAPER.md
