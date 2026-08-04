@@ -1,0 +1,96 @@
+\begin{thebibliography}{12}
+\providecommand{\natexlab}[1]{#1}
+\providecommand{\url}[1]{\texttt{#1}}
+\expandafter\ifx\csname urlstyle\endcsname\relax
+  \providecommand{\doi}[1]{doi: #1}\else
+  \providecommand{\doi}{doi: \begingroup \urlstyle{rm}\Url}\fi
+
+\bibitem[Bajaj et~al.(2016)Bajaj, Campos, Craswell, Deng, Gao, Liu, Majumder,
+  McNamara, Mitra, Nguyen, Rosenberg, Song, Stoica, Tiwary, and
+  Wang]{bajaj2016msmarco}
+Payal Bajaj, Daniel Campos, Nick Craswell, Li~Deng, Jianfeng Gao, Xiaodong Liu,
+  Rangan Majumder, Andrew McNamara, Bhaskar Mitra, Tri Nguyen, Mir Rosenberg,
+  Xia Song, Alina Stoica, Saurabh Tiwary, and Tong Wang.
+\newblock {MS MARCO}: A human generated machine reading comprehension dataset.
+\newblock \emph{arXiv preprint arXiv:1611.09268}, 2016.
+
+\bibitem[Conway et~al.(2025)Conway, Dey, Hackmann, Hausknecht, Schmidt,
+  Steadman, and Volynets]{conway2025syftr}
+Alexander Conway, Debadeepta Dey, Stefan Hackmann, Matthew Hausknecht, Michael
+  Schmidt, Mark Steadman, and Nick Volynets.
+\newblock syftr: Pareto-optimal generative {AI}.
+\newblock In \emph{International Conference on Automated Machine Learning
+  (AutoML)}, 2025.
+\newblock arXiv:2505.20266.
+
+\bibitem[Douze et~al.(2024)Douze, Guzhva, Deng, Johnson, Szilvasy, Mazar{\'e},
+  Lomeli, Hosseini, and J{\'e}gou]{douze2024faiss}
+Matthijs Douze, Alexandr Guzhva, Chengqi Deng, Jeff Johnson, Gergely Szilvasy,
+  Pierre-Emmanuel Mazar{\'e}, Maria Lomeli, Lucas Hosseini, and Herv{\'e}
+  J{\'e}gou.
+\newblock The {Faiss} library.
+\newblock \emph{arXiv preprint arXiv:2401.08281}, 2024.
+
+\bibitem[Jiang(2025)]{jiang2025ragstack}
+Wenqi Jiang.
+\newblock {RAG-Stack}: Co-optimizing {RAG} quality and performance from the
+  vector database perspective.
+\newblock \emph{arXiv preprint arXiv:2510.20296}, 2025.
+
+\bibitem[Kartal et~al.(2025)Kartal, Kose, Sevin{\c{c}}, and
+  Aktas]{kartal2025ragsmith}
+Mehmet~Yasin Kartal, S.~K. Kose, K.~Sevin{\c{c}}, and B.~Aktas.
+\newblock {RAGSmith}: A framework for finding the optimal composition of
+  retrieval-augmented generation methods across datasets.
+\newblock \emph{arXiv preprint arXiv:2511.01386}, 2025.
+
+\bibitem[Kendall(1938)]{kendall1938}
+M.~G. Kendall.
+\newblock A new measure of rank correlation.
+\newblock \emph{Biometrika}, 30\penalty0 (1--2):\penalty0 81--93, 1938.
+\newblock \doi{10.1093/biomet/30.1-2.81}.
+
+\bibitem[Lewis et~al.(2020)Lewis, Perez, Piktus, Petroni, Karpukhin, Goyal,
+  K{\"u}ttler, Lewis, Yih, Rockt{\"a}schel, Riedel, and Kiela]{lewis2020rag}
+Patrick Lewis, Ethan Perez, Aleksandra Piktus, Fabio Petroni, Vladimir
+  Karpukhin, Naman Goyal, Heinrich K{\"u}ttler, Mike Lewis, Wen-tau Yih, Tim
+  Rockt{\"a}schel, Sebastian Riedel, and Douwe Kiela.
+\newblock Retrieval-augmented generation for knowledge-intensive {NLP} tasks.
+\newblock In \emph{Advances in Neural Information Processing Systems
+  (NeurIPS)}, 2020.
+\newblock arXiv:2005.11401.
+
+\bibitem[{Qwen Team}(2024)]{qwen2024qwen25}
+{Qwen Team}.
+\newblock {Qwen2.5} technical report.
+\newblock \emph{arXiv preprint arXiv:2412.15115}, 2024.
+
+\bibitem[Ray et~al.(2025)Ray, Pan, Gu, Du, Feng, Ananthanarayanan, Netravali,
+  and Jiang]{ray2025metis}
+Siddhant Ray, Rui Pan, Zhuohan Gu, Kuntai Du, Shaoting Feng, Ganesh
+  Ananthanarayanan, Ravi Netravali, and Junchen Jiang.
+\newblock {METIS}: Fast quality-aware {RAG} systems with configuration
+  adaptation.
+\newblock In \emph{Proceedings of the ACM Symposium on Operating Systems
+  Principles (SOSP)}, 2025.
+\newblock arXiv:2412.10543.
+
+\bibitem[Reimers and Gurevych(2019)]{reimers2019sbert}
+Nils Reimers and Iryna Gurevych.
+\newblock {Sentence-BERT}: Sentence embeddings using siamese {BERT}-networks.
+\newblock In \emph{Proceedings of EMNLP-IJCNLP}, 2019.
+\newblock arXiv:1908.10084.
+
+\bibitem[Tawil(2026)]{tawil2026david}
+Ahmad Tawil.
+\newblock David vs goliath: Agentic versus naive {RAG} across model scales.
+\newblock Unpublished manuscript, 2026.
+
+\bibitem[Xiao et~al.(2023)Xiao, Liu, Zhang, Muennighoff, Lian, and
+  Nie]{xiao2023cpack}
+Shitao Xiao, Zheng Liu, Peitian Zhang, Niklas Muennighoff, Defu Lian, and
+  Jian-Yun Nie.
+\newblock {C-Pack}: Packed resources for general chinese embeddings.
+\newblock \emph{arXiv preprint arXiv:2309.07597}, 2023.
+
+\end{thebibliography}
